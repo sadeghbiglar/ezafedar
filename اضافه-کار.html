@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدیریت اضافه‌کار پرسنل</title>
+
+<!-- ===== فونت وزیر — تلاش اول لوکال، بعد CDN ===== -->
+<style>
+  @font-face{
+    font-family: 'Vazirmatn';
+    src: url('Vazirmatn-Regular.woff2') format('woff2'),
+         url('Vazirmatn-Regular.woff') format('woff'),
+         url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face{
+    font-family: 'Vazirmatn';
+    src: url('Vazirmatn-Bold.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+  }
+</style>
+
+<!-- ===== کتابخانه SheetJS — تلاش اول لوکال، بعد CDN ===== -->
+<script>
+  // اگر فایل لوکال موجود بود، از آن استفاده کن؛ وگرنه CDN
+  (function(){
+    function loadLocal(){
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'xlsx.full.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    function loadCDN(){
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    loadLocal().catch(() => loadCDN()).catch(() => {
+      console.error('SheetJS load failed — both local and CDN');
+    });
+  })();
+</script>
+
+<style>
+  :root{
+    --primary:#2563eb; --primary-dark:#1e40af;
+    --success:#16a34a; --danger:#dc2626;
+    --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0;
+    --text:#1e293b; --muted:#64748b;
+    --sidebar-bg:#0f172a; --sidebar-hover:#1e293b; --sidebar-active:#2563eb;
+    --up:#dc2626; --down:#0891b2; --none:#64748b;
+    --sidebar-w: 240px;
+  }
+  *{box-sizing:border-box; font-family:'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;}
+  html, body{margin:0; padding:0; height:100%;}
+  body{background:var(--bg); color:var(--text); overflow:hidden;}
+
+  /* ============ SIDEBAR ============ */
+  .sidebar{
+    position:fixed; right:0; top:0; bottom:0;
+    width:var(--sidebar-w);
+    background:var(--sidebar-bg);
+    color:#cbd5e1;
+    display:flex; flex-direction:column;
+    z-index:100;
+    transition:transform .2s;
+    overflow-y:auto;
+  }
+  .sidebar-brand{
+    padding:18px 16px;
+    border-bottom:1px solid #1e293b;
+    text-align:center;
+  }
+  .sidebar-brand h1{
+    margin:0; font-size:16px; color:#fff;
+    font-weight:700;
+  }
+  .sidebar-brand p{
+    margin:4px 0 0; font-size:11px; color:#94a3b8;
+  }
+  .sidebar-nav{
+    flex:1;
+    padding:10px 0;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:12px 18px;
+    color:#cbd5e1;
+    text-decoration:none;
+    font-size:13px; font-weight:600;
+    cursor:pointer;
+    border:none; background:transparent;
+    width:100%; text-align:right;
+    transition:.15s;
+    border-right:3px solid transparent;
+  }
+  .nav-item:hover{background:var(--sidebar-hover); color:#fff;}
+  .nav-item.active{
+    background:var(--sidebar-hover);
+    color:#fff;
+    border-right-color:var(--sidebar-active);
+  }
+  .nav-item .icon{font-size:16px; width:20px; text-align:center;}
+  .nav-item .badge-count{
+    margin-right:auto; margin-left:0;
+    background:var(--primary); color:#fff;
+    font-size:10px; padding:2px 7px; border-radius:10px;
+    font-weight:700;
+  }
+  .nav-item.active .badge-count{background:#fff; color:var(--primary-dark);}
+  .sidebar-footer{
+    padding:12px 14px;
+    border-top:1px solid #1e293b;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .sidebar-footer button{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid #334155;
+    background:transparent;
+    color:#cbd5e1;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
+    transition:.15s;
+    display:flex; align-items:center; gap:6px; justify-content:center;
+  }
+  .sidebar-footer button:hover{background:#1e293b; color:#fff;}
+
+  /* ============ MAIN ============ */
+  .main-wrap{
+    margin-right:var(--sidebar-w);
+    height:100vh;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .top-bar{
+    background:#fff;
+    padding:8px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    flex-shrink:0;
+  }
+  .top-bar .page-title{
+    font-size:15px; font-weight:700; color:var(--primary-dark);
+    margin-left:auto;
+  }
+  .top-bar button{
+    padding:6px 12px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
+    transition:.15s;
+    display:flex; align-items:center; gap:5px;
+  }
+  .top-bar button:hover{transform:translateY(-1px); opacity:.9;}
+  .btn-import{background:#7c3aed; color:#fff;}
+  .btn-export{background:var(--success); color:#fff;}
+  .btn-export-imp{background:#0891b2; color:#fff;}
+  .btn-print{background:#0ea5e9; color:#fff;}
+
+  .content{
+    flex:1;
+    overflow-y:auto;
+    padding:12px 16px 40px 16px;
+  }
+  .section{display:none; background:var(--card); border-radius:10px; padding:14px;
+           box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:12px;}
+  .section.active{display:block;}
+
+  /* toolbar in section */
+  .toolbar{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center;}
+  button.btn{padding:6px 12px; border:none; border-radius:6px; cursor:pointer;
+             font-size:12px; font-weight:600; transition:.15s;}
+  .btn-add{background:var(--primary); color:#fff;}
+  .btn-add:hover{background:var(--primary-dark);}
+  .btn-del{background:var(--danger); color:#fff;}
+  .btn-excel{background:var(--success); color:#fff;}
+  .btn-clear{background:#f59e0b; color:#fff;}
+  .btn-import2{background:#7c3aed; color:#fff;}
+  .btn-print2{background:#0ea5e9; color:#fff;}
+  .btn-up{background:#dc2626; color:#fff;}
+  .btn-down{background:#0891b2; color:#fff;}
+  .btn-none{background:#64748b; color:#fff;}
+  .btn:hover{opacity:.9;}
+
+  .search-bar{display:flex; gap:8px; align-items:center; margin-bottom:10px;
+              background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid var(--border);}
+  .search-bar input{flex:1; padding:6px 10px; border:1px solid var(--border); border-radius:5px;
+                    font-size:12px; text-align:right;}
+  .search-bar input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .search-bar .info{font-size:11px; color:var(--muted); white-space:nowrap;}
+
+  /* table */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{background:#f8fafc; color:var(--muted); padding:6px 4px; text-align:center;
+     border-bottom:2px solid var(--border); font-weight:600; font-size:11px;
+     cursor:pointer; user-select:none; position:relative; transition:.15s;
+     white-space:nowrap;}
+  th:hover{background:#e2e8f0; color:var(--primary-dark);}
+  th .sort-ind{font-size:10px; margin-right:3px; color:var(--primary); font-weight:700;}
+  th.sort-asc::after{content:'▲'; position:absolute; left:3px; top:50%; transform:translateY(-50%);
+                     font-size:9px; color:var(--primary);}
+  th.sort-desc::after{content:'▼'; position:absolute; left:3px; top:50%; transform:translateY(-50%);
+                      font-size:9px; color:var(--primary);}
+  th.no-sort{cursor:default;}
+  th.no-sort:hover{background:#f8fafc; color:var(--muted);}
+  td{padding:4px; border-bottom:1px solid var(--border); text-align:center;}
+  input, select{width:100%; padding:5px 6px; border:1px solid var(--border); border-radius:4px;
+        font-size:12px; text-align:center; transition:.15s; background:#fff; font-family:inherit;}
+  input:focus, select:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 2px rgba(37,99,235,.15);}
+  input.num{text-align:left; direction:ltr;}
+  select.type-sel{cursor:pointer; font-weight:600;}
+  select.type-sel.kayfi{background:#fef3c7; color:#92400e;}
+  select.type-sel.kammi{background:#dbeafe; color:#1e40af;}
+  select.round-sel{cursor:pointer; font-weight:600; font-size:11px;}
+  select.round-sel.up{background:#fee2e2; color:#991b1b;}
+  select.round-sel.down{background:#cffafe; color:#155e75;}
+  select.round-sel.none{background:#f1f5f9; color:#475569;}
+  .calc{background:#ecfdf5; font-weight:600; color:var(--success); padding:5px;
+        border-radius:4px; direction:ltr; text-align:left; font-size:12px;}
+  .calc.final{background:#dbeafe; color:#1e40af; font-weight:700;}
+  .diff{font-size:11px; direction:ltr; text-align:left; padding:5px; border-radius:4px;}
+  .diff.pos{background:#fee2e2; color:#991b1b;}
+  .diff.neg{background:#cffafe; color:#155e75;}
+  .diff.zero{background:#f1f5f9; color:#64748b;}
+  .del-row{background:transparent; color:var(--danger); border:none; cursor:pointer;
+           font-size:16px; font-weight:bold;}
+  .total-row{background:#fef3c7; font-weight:700;}
+  .total-row td{padding:8px 4px; font-size:12px;}
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr));
+             gap:10px; margin-bottom:12px;}
+  .stat-card{background:linear-gradient(135deg, #eff6ff, #dbeafe); border-radius:8px;
+             padding:12px; border-right:3px solid var(--primary);}
+  .stat-card.green{background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-right-color:var(--success);}
+  .stat-card.orange{background:linear-gradient(135deg,#fff7ed,#ffedd5); border-right-color:#f97316;}
+  .stat-card.purple{background:linear-gradient(135deg,#faf5ff,#f3e8ff); border-right-color:#9333ea;}
+  .stat-card.red{background:linear-gradient(135deg,#fef2f2,#fee2e2); border-right-color:#dc2626;}
+  .stat-label{font-size:11px; color:var(--muted); margin-bottom:4px;}
+  .stat-value{font-size:17px; font-weight:700; color:var(--primary-dark); direction:ltr; text-align:right;}
+  .stat-unit{font-size:10px; color:var(--muted); margin-right:3px;}
+  .badge{display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600;}
+  .badge-k{background:#fef3c7; color:#92400e;}
+  .badge-km{background:#dbeafe; color:#1e40af;}
+  .badge-up{background:#fee2e2; color:#991b1b;}
+  .badge-down{background:#cffafe; color:#155e75;}
+  .badge-none{background:#f1f5f9; color:#475569;}
+  .empty{text-align:center; padding:30px; color:var(--muted); font-style:italic; font-size:12px;}
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+         background:#1e293b; color:#fff; padding:10px 20px; border-radius:8px;
+         box-shadow:0 4px 12px rgba(0,0,0,.3); z-index:9999; opacity:0; transition:.3s;
+         font-size:13px; font-weight:600; max-width:90vw; text-align:center;}
+  .toast.show{opacity:1;}
+
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none;
+         align-items:center; justify-content:center; z-index:1000; padding:16px;}
+  .modal.show{display:flex;}
+  .modal-box{background:#fff; border-radius:12px; padding:20px; max-width:640px; width:100%;
+             box-shadow:0 10px 40px rgba(0,0,0,.3); max-height:90vh; overflow:auto;}
+  .modal-box h2{margin:0 0 12px; color:var(--primary-dark); font-size:16px;}
+  .modal-box h3{margin:14px 0 6px; color:var(--primary-dark); font-size:13px;}
+  .modal-box label{display:block; font-size:12px; font-weight:600; margin:8px 0 4px; color:var(--muted);}
+  .modal-box input[type=text], .modal-box input[type=password], .modal-box input[type=file], .modal-box textarea{
+    width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;
+  }
+  .modal-box textarea{min-height:60px; resize:vertical; font-family:inherit;}
+  .modal-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:14px;}
+
+  .col-picker{display:grid; grid-template-columns:repeat(auto-fill, minmax(130px,1fr));
+              gap:5px; background:#f8fafc; padding:8px; border-radius:6px;
+              border:1px solid var(--border); margin-top:4px;}
+  .col-picker label{display:flex; align-items:center; gap:5px; font-weight:normal;
+                    font-size:11px; padding:4px 6px; background:#fff; border-radius:4px;
+                    border:1px solid var(--border); cursor:pointer; margin:0;}
+  .col-picker label:hover{background:#eff6ff;}
+  .col-picker input{width:auto !important; margin:0;}
+  .col-actions{display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;}
+  .col-actions button{padding:3px 8px; font-size:10px; border:none; border-radius:3px;
+                      background:#e2e8f0; color:var(--text); cursor:pointer; font-weight:600;}
+  .col-actions button:hover{background:#cbd5e1;}
+
+  .orient-picker{display:flex; gap:6px; margin-top:4px;}
+  .orient-picker label{display:flex; align-items:center; gap:5px; padding:6px 10px;
+                       border:2px solid var(--border); border-radius:6px; cursor:pointer;
+                       font-weight:600; font-size:12px; background:#fff; margin:0;}
+  .orient-picker label:hover{border-color:var(--primary);}
+  .orient-picker input{width:auto; margin:0;}
+  .orient-picker label.checked{border-color:var(--primary); background:#eff6ff; color:var(--primary-dark);}
+
+  .chk-row{display:flex; align-items:center; gap:8px; padding:8px 10px; margin-top:6px;
+           background:#fff7ed; border:1px solid #fed7aa; border-radius:6px;}
+  .chk-row input{width:auto; margin:0;}
+  .chk-row label{margin:0; color:#9a3412; font-weight:600; font-size:12px; cursor:pointer;}
+
+  .radio-group{display:flex; gap:5px; flex-wrap:wrap; margin-top:4px;}
+  .radio-group label{display:flex; align-items:center; gap:5px; padding:6px 10px;
+                     border:2px solid var(--border); border-radius:6px; cursor:pointer;
+                     font-weight:600; font-size:12px; background:#fff; margin:0;}
+  .radio-group label:hover{border-color:var(--primary);}
+  .radio-group input{width:auto; margin:0;}
+  .radio-group label.checked{border-color:var(--primary); background:#eff6ff; color:var(--primary-dark);}
+
+  /* LOCK */
+  #lock{position:fixed; inset:0; background:linear-gradient(135deg,#1e40af,#7c3aed);
+        display:flex; align-items:center; justify-content:center; z-index:99999; padding:16px;}
+  #lock .lock-box{background:#fff; border-radius:16px; padding:28px; width:100%; max-width:380px;
+                  text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.4);}
+  #lock h2{margin:0 0 8px; color:var(--primary-dark); font-size:18px;}
+  #lock p{color:var(--muted); font-size:12px; margin:0 0 16px;}
+  #lock input{width:100%; padding:11px; border:1px solid var(--border); border-radius:8px;
+              font-size:15px; text-align:center; margin-bottom:10px;}
+  #lock button{width:100%; padding:11px; background:var(--primary); color:#fff; border:none;
+               border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;}
+  #lock button:hover{background:var(--primary-dark);}
+  #lock .err{color:var(--danger); font-size:12px; margin-top:8px; min-height:16px;}
+  .hint{font-size:11px; color:var(--muted); margin-top:10px;}
+
+  /* PRINT */
+  #print-area{display:none;}
+  @media print{
+    html, body{background:#fff !important; padding:0 !important; margin:0 !important;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    body > *:not(#print-area){display:none !important;}
+    .sidebar, .main-wrap{display:none !important;}
+    #print-area{display:block !important; position:relative;}
+    #print-area .print-header-fixed{
+      position:fixed; top:0; left:0; right:0; background:#fff;
+      padding:4mm 10mm 2mm 10mm; text-align:center;
+      border-bottom:1px solid #ddd; z-index:100;
+    }
+    #print-area .print-header-fixed h2{margin:0 0 2px; font-size:13px;}
+    #print-area .print-header-fixed .meta{font-size:9px; color:#555; margin-top:2px;}
+    #print-area .print-footer-fixed{
+      position:fixed; bottom:0; left:0; right:0; background:#fff;
+      padding:2mm 10mm; text-align:center;
+      border-top:1px solid #ddd; z-index:100;
+    }
+    #print-area .print-footer-fixed .content{font-size:9px; color:#555; white-space:pre-line; line-height:1.4;}
+    #print-area .print-body{padding-top:22mm; padding-bottom:18mm;}
+    #print-area h3{font-size:12px; margin:8px 0 6px; padding-bottom:3px;
+                   border-bottom:2px solid #333; page-break-after:avoid;}
+    #print-area table{width:100%; border-collapse:collapse; font-size:9px; margin-bottom:8px;}
+    #print-area table thead{display:table-header-group;}
+    #print-area table tfoot{display:table-footer-group;}
+    #print-area table tr{page-break-inside:avoid;}
+    #print-area th{background:#e5e7eb !important; color:#111 !important;
+      padding:4px 3px; border:1px solid #999; font-weight:700; font-size:9px; text-align:center;}
+    #print-area td{padding:3px; border:1px solid #ccc; text-align:center; font-size:9px;}
+    #print-area .total-row{background:#fef3c7 !important;}
+    #print-area .total-row td{font-weight:700; padding:5px 3px;}
+  }
+
+  /* responsive */
+  @media (max-width: 768px){
+    :root{ --sidebar-w: 70px; }
+    .sidebar-brand h1{font-size:12px;}
+    .sidebar-brand p{display:none;}
+    .nav-item span.label{display:none;}
+    .nav-item{justify-content:center; padding:12px 8px;}
+    .nav-item .badge-count{position:absolute; top:6px; left:6px; margin:0; font-size:9px; padding:1px 5px;}
+    .sidebar-footer button span.label{display:none;}
+    .top-bar .page-title{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock">
+  <div class="lock-box">
+    <h2>🔒 ورود به سیستم</h2>
+    <p>مدیریت اضافه‌کار پرسنل</p>
+    <input type="password" id="lock-pass" placeholder="رمز عبور" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button onclick="tryUnlock()">ورود</button>
+    <div class="err" id="lock-err"></div>
+    <div class="hint">رمز پیش‌فرض: <b>1234</b></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>📊 اضافه‌کار</h1>
+      <p>مدیریت پرسنل</p>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-tab="kayfi" onclick="showTab('kayfi')">
+        <span class="icon">🟦</span>
+        <span class="label">کیفی</span>
+        <span class="badge-count" id="nav-count-kayfi">0</span>
+      </button>
+      <button class="nav-item" data-tab="kammi" onclick="showTab('kammi')">
+        <span class="icon">🟩</span>
+        <span class="label">کمی</span>
+        <span class="badge-count" id="nav-count-kammi">0</span>
+      </button>
+      <button class="nav-item" data-tab="merge" onclick="showTab('merge')">
+        <span class="icon">🟨</span>
+        <span class="label">تجمیع</span>
+        <span class="badge-count" id="nav-count-merge">0</span>
+      </button>
+      <button class="nav-item" data-tab="stats" onclick="showTab('stats')">
+        <span class="icon">🟥</span>
+        <span class="label">آمار کلی</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <button onclick="openPasswordChange()">🔑 <span class="label">تغییر رمز</span></button>
+      <button onclick="lockApp()">🚪 <span class="label">خروج</span></button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-wrap">
+
+    <div class="top-bar">
+      <button class="btn-import" onclick="openImport()">📂 ایمپورت اکسل</button>
+      <button class="btn-export-imp" onclick="exportForReimport()">📤 خروجی قابل ایمپورت</button>
+      <button class="btn-print" onclick="openPrint()">🖨 چاپ</button>
+      <span class="page-title" id="page-title">🟦 لیست کیفی</span>
+    </div>
+
+    <div class="content">
+
+      <!-- ================= کیفی ================= -->
+      <div id="kayfi" class="section active">
+        <div class="toolbar">
+          <button class="btn btn-add" onclick="addRow('kayfi')">➕ افزودن ردیف</button>
+          <button class="btn btn-up" onclick="bulkRound('kayfi','up')">⬆ رند بالا</button>
+          <button class="btn btn-down" onclick="bulkRound('kayfi','down')">⬇ رند پایین</button>
+          <button class="btn btn-none" onclick="bulkRound('kayfi','none')">⊘ حذف رند</button>
+          <button class="btn btn-excel" onclick="exportExcel('kayfi')">📥 خروجی اکسل</button>
+          <button class="btn btn-clear" onclick="clearAll('kayfi')">🗑 پاک کردن</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-kayfi" placeholder="🔍 جستجو..."
+                 oninput="onSearch('kayfi', this.value)">
+          <span class="info" id="info-kayfi">همه ردیف‌ها</span>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl-kayfi">
+            <thead><tr>
+              <th class="no-sort" style="width:30px">#</th>
+              <th data-sort="type" onclick="sortBy('kayfi','type')" style="width:68px">نوع <span class="sort-ind" id="si-kayfi-type"></span></th>
+              <th data-sort="firstName" onclick="sortBy('kayfi','firstName')" style="width:85px">نام <span class="sort-ind" id="si-kayfi-firstName"></span></th>
+              <th data-sort="lastName" onclick="sortBy('kayfi','lastName')" style="width:105px"><b>نام خانوادگی</b> <span class="sort-ind" id="si-kayfi-lastName"></span></th>
+              <th data-sort="nationalId" onclick="sortBy('kayfi','nationalId')" style="width:105px">کد ملی <span class="sort-ind" id="si-kayfi-nationalId"></span></th>
+              <th data-sort="position" onclick="sortBy('kayfi','position')" style="width:95px">سمت <span class="sort-ind" id="si-kayfi-position"></span></th>
+              <th data-sort="rate" onclick="sortBy('kayfi','rate')" style="width:95px">ماخذ <span class="sort-ind" id="si-kayfi-rate"></span></th>
+              <th data-sort="desiredAmount" onclick="sortBy('kayfi','desiredAmount')" style="width:105px">مبلغ دلخواه <span class="sort-ind" id="si-kayfi-desiredAmount"></span></th>
+              <th data-sort="rawHours" onclick="sortBy('kayfi','rawHours')" style="width:80px">ساعت خام <span class="sort-ind" id="si-kayfi-rawHours"></span></th>
+              <th data-sort="round" onclick="sortBy('kayfi','round')" style="width:65px">رند <span class="sort-ind" id="si-kayfi-round"></span></th>
+              <th data-sort="finalHours" onclick="sortBy('kayfi','finalHours')" style="width:80px">ساعت نهایی <span class="sort-ind" id="si-kayfi-finalHours"></span></th>
+              <th data-sort="finalAmount" onclick="sortBy('kayfi','finalAmount')" style="width:105px">مبلغ نهایی <span class="sort-ind" id="si-kayfi-finalAmount"></span></th>
+              <th data-sort="diff" onclick="sortBy('kayfi','diff')" style="width:80px">اختلاف <span class="sort-ind" id="si-kayfi-diff"></span></th>
+              <th class="no-sort" style="width:30px"></th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot><tr class="total-row">
+              <td colspan="7">جمع کل</td>
+              <td id="sum-kayfi-amount">0</td>
+              <td id="sum-kayfi-raw">0</td>
+              <td></td>
+              <td id="sum-kayfi-final-hrs">0</td>
+              <td id="sum-kayfi-final-amt">0</td>
+              <td id="sum-kayfi-diff">0</td>
+              <td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= کمی ================= -->
+      <div id="kammi" class="section">
+        <div class="toolbar">
+          <button class="btn btn-add" onclick="addRow('kammi')">➕ افزودن ردیف</button>
+          <button class="btn btn-up" onclick="bulkRound('kammi','up')">⬆ رند بالا</button>
+          <button class="btn btn-down" onclick="bulkRound('kammi','down')">⬇ رند پایین</button>
+          <button class="btn btn-none" onclick="bulkRound('kammi','none')">⊘ حذف رند</button>
+          <button class="btn btn-excel" onclick="exportExcel('kammi')">📥 خروجی اکسل</button>
+          <button class="btn btn-clear" onclick="clearAll('kammi')">🗑 پاک کردن</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-kammi" placeholder="🔍 جستجو..."
+                 oninput="onSearch('kammi', this.value)">
+          <span class="info" id="info-kammi">همه ردیف‌ها</span>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl-kammi">
+            <thead><tr>
+              <th class="no-sort" style="width:30px">#</th>
+              <th data-sort="type" onclick="sortBy('kammi','type')" style="width:68px">نوع <span class="sort-ind" id="si-kammi-type"></span></th>
+              <th data-sort="firstName" onclick="sortBy('kammi','firstName')" style="width:85px">نام <span class="sort-ind" id="si-kammi-firstName"></span></th>
+              <th data-sort="lastName" onclick="sortBy('kammi','lastName')" style="width:105px"><b>نام خانوادگی</b> <span class="sort-ind" id="si-kammi-lastName"></span></th>
+              <th data-sort="nationalId" onclick="sortBy('kammi','nationalId')" style="width:105px">کد ملی <span class="sort-ind" id="si-kammi-nationalId"></span></th>
+              <th data-sort="position" onclick="sortBy('kammi','position')" style="width:95px">سمت <span class="sort-ind" id="si-kammi-position"></span></th>
+              <th data-sort="rate" onclick="sortBy('kammi','rate')" style="width:95px">ماخذ <span class="sort-ind" id="si-kammi-rate"></span></th>
+              <th data-sort="rawHours" onclick="sortBy('kammi','rawHours')" style="width:85px">ساعت ورودی <span class="sort-ind" id="si-kammi-rawHours"></span></th>
+              <th data-sort="round" onclick="sortBy('kammi','round')" style="width:65px">رند <span class="sort-ind" id="si-kammi-round"></span></th>
+              <th data-sort="finalHours" onclick="sortBy('kammi','finalHours')" style="width:80px">ساعت نهایی <span class="sort-ind" id="si-kammi-finalHours"></span></th>
+              <th data-sort="finalAmount" onclick="sortBy('kammi','finalAmount')" style="width:105px">مبلغ نهایی <span class="sort-ind" id="si-kammi-finalAmount"></span></th>
+              <th data-sort="diff" onclick="sortBy('kammi','diff')" style="width:80px">اختلاف <span class="sort-ind" id="si-kammi-diff"></span></th>
+              <th class="no-sort" style="width:30px"></th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot><tr class="total-row">
+              <td colspan="7">جمع کل</td>
+              <td id="sum-kammi-raw">0</td>
+              <td></td>
+              <td id="sum-kammi-final-hrs">0</td>
+              <td id="sum-kammi-final-amt">0</td>
+              <td id="sum-kammi-diff">0</td>
+              <td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= تجمیع ================= -->
+      <div id="merge" class="section">
+        <div class="toolbar">
+          <button class="btn btn-excel" onclick="exportExcel('merge')">📥 خروجی اکسل (تجمیع)</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-merge" placeholder="🔍 جستجو..."
+                 oninput="onSearch('merge', this.value)">
+          <span class="info" id="info-merge">همه ردیف‌ها</span>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl-merge">
+            <thead><tr>
+              <th class="no-sort">#</th>
+              <th data-sort="type" onclick="sortBy('merge','type')">نوع <span class="sort-ind" id="si-merge-type"></span></th>
+              <th data-sort="firstName" onclick="sortBy('merge','firstName')">نام <span class="sort-ind" id="si-merge-firstName"></span></th>
+              <th data-sort="lastName" onclick="sortBy('merge','lastName')"><b>نام خانوادگی</b> <span class="sort-ind" id="si-merge-lastName"></span></th>
+              <th data-sort="nationalId" onclick="sortBy('merge','nationalId')">کد ملی <span class="sort-ind" id="si-merge-nationalId"></span></th>
+              <th data-sort="position" onclick="sortBy('merge','position')">سمت <span class="sort-ind" id="si-merge-position"></span></th>
+              <th data-sort="rate" onclick="sortBy('merge','rate')">ماخذ <span class="sort-ind" id="si-merge-rate"></span></th>
+              <th data-sort="finalHours" onclick="sortBy('merge','finalHours')">ساعت نهایی <span class="sort-ind" id="si-merge-finalHours"></span></th>
+              <th data-sort="finalAmount" onclick="sortBy('merge','finalAmount')">مبلغ نهایی <span class="sort-ind" id="si-merge-finalAmount"></span></th>
+              <th data-sort="round" onclick="sortBy('merge','round')">رند <span class="sort-ind" id="si-merge-round"></span></th>
+            </tr></thead>
+            <tbody></tbody>
+            <tfoot><tr class="total-row">
+              <td colspan="7">جمع کل</td>
+              <td id="sum-merge-hrs">0</td><td id="sum-merge-amt">0</td><td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= آمار ================= -->
+      <div id="stats" class="section">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-label">💰 جمع مبلغ دلخواه (کیفی)</div>
+            <div class="stat-value" id="st-k-amt">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card red"><div class="stat-label">💰 جمع مبلغ نهایی (کیفی)</div>
+            <div class="stat-value" id="st-k-final">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card green"><div class="stat-label">⏱ جمع ساعت نهایی کیفی</div>
+            <div class="stat-value" id="st-k-hrs">0 <span class="stat-unit">ساعت</span></div></div>
+          <div class="stat-card orange"><div class="stat-label">📊 اختلاف رند کیفی</div>
+            <div class="stat-value" id="st-k-diff">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card"><div class="stat-label">💰 جمع مبلغ کمی</div>
+            <div class="stat-value" id="st-km-amt">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card green"><div class="stat-label">⏱ جمع ساعت نهایی کمی</div>
+            <div class="stat-value" id="st-km-hrs">0 <span class="stat-unit">ساعت</span></div></div>
+          <div class="stat-card orange"><div class="stat-label">🧮 جمع کل مبلغ نهایی</div>
+            <div class="stat-value" id="st-total-amt">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card orange"><div class="stat-label">🧮 جمع کل ساعت نهایی</div>
+            <div class="stat-value" id="st-total-hrs">0 <span class="stat-unit">ساعت</span></div></div>
+          <div class="stat-card purple"><div class="stat-label">👥 نفرات کیفی</div>
+            <div class="stat-value" id="st-k-count">0</div></div>
+          <div class="stat-card purple"><div class="stat-label">👥 نفرات کمی</div>
+            <div class="stat-value" id="st-km-count">0</div></div>
+          <div class="stat-card"><div class="stat-label">📊 میانگین ماخذ کیفی</div>
+            <div class="stat-value" id="st-k-avg">0 <span class="stat-unit">ریال</span></div></div>
+          <div class="stat-card"><div class="stat-label">📊 میانگین ماخذ کمی</div>
+            <div class="stat-value" id="st-km-avg">0 <span class="stat-unit">ریال</span></div></div>
+        </div>
+        <div class="toolbar" style="justify-content:center;">
+          <button class="btn btn-excel" onclick="exportExcel('all')">📥 خروجی اکسل کامل</button>
+          <button class="btn btn-import2" onclick="exportForReimport()">📤 خروجی قابل ایمپورت</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal" id="modal-import">
+  <div class="modal-box">
+    <h2>📂 ایمپورت اکسل</h2>
+    <p style="font-size:12px;color:var(--muted);line-height:1.7;">
+      ستون‌ها: <b>نام</b> | <b>نام خانوادگی</b> | <b>کد ملی</b> | <b>سمت</b> | <b>ماخذ</b> | <b>نوع</b> (کیفی/کمی) | <b>مبلغ</b> یا <b>ساعت</b> | <b>رند</b> (اختیاری)
+    </p>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn" style="background:#64748b;color:#fff;flex:1;padding:8px" onclick="downloadTemplate()">📋 دانلود قالب نمونه</button>
+    </div>
+
+    <h3>🎯 نوع پیش‌فرض برای ردیف‌های بدون نوع</h3>
+    <div class="radio-group">
+      <label class="checked" id="defk-kayfi-label">
+        <input type="radio" name="def-type" value="kayfi" checked onchange="onDefTypeChange()"> 🟦 کیفی
+      </label>
+      <label id="defk-kammi-label">
+        <input type="radio" name="def-type" value="kammi" onchange="onDefTypeChange()"> 🟩 کمی
+      </label>
+      <label id="defk-skip-label">
+        <input type="radio" name="def-type" value="skip" onchange="onDefTypeChange()"> ⏭ رد کردن
+      </label>
+    </div>
+
+    <label>انتخاب فایل اکسل</label>
+    <input type="file" id="import-file" accept=".xlsx,.xls,.csv">
+    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-top:10px;">
+      <input type="checkbox" id="import-clear" style="width:auto;"> پاک کردن داده‌های فعلی
+    </label>
+    <div class="modal-actions">
+      <button class="btn" style="background:#94a3b8;color:#fff;padding:8px 14px" onclick="closeModal('modal-import')">انصراف</button>
+      <button class="btn btn-import2" style="padding:8px 14px" onclick="doImport()">📥 ایمپورت</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT MODAL -->
+<div class="modal" id="modal-print">
+  <div class="modal-box">
+    <h2>🖨 تنظیمات چاپ</h2>
+
+    <h3>📐 جهت صفحه</h3>
+    <div class="orient-picker">
+      <label class="checked" id="orient-portrait-label">
+        <input type="radio" name="orient" value="portrait" checked onchange="onOrientChange()"> 📄 عمودی
+      </label>
+      <label id="orient-landscape-label">
+        <input type="radio" name="orient" value="landscape" onchange="onOrientChange()"> 📃 افقی
+      </label>
+    </div>
+
+    <h3>🎯 بخش‌ها</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">
+      <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" id="pr-kayfi" checked style="width:auto;"> کیفی</label>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" id="pr-kammi" checked style="width:auto;"> کمی</label>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" id="pr-merge" checked style="width:auto;"> تجمیع</label>
+      <label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" id="pr-stats" checked style="width:auto;"> آمار</label>
+    </div>
+
+    <h3>🚫 حذف ردیف‌های خالی</h3>
+    <div class="chk-row">
+      <input type="checkbox" id="pr-skip-zero" onchange="saveSkipZero(this.checked)">
+      <label for="pr-skip-zero">🚫 ردیف‌های با مبلغ صفر چاپ نشوند</label>
+    </div>
+
+    <h3>📋 ستون‌های کیفی</h3>
+    <div class="col-picker" id="cols-kayfi"></div>
+    <div class="col-actions">
+      <button onclick="toggleAllCols('kayfi', true)">✔ همه</button>
+      <button onclick="toggleAllCols('kayfi', false)">✖ هیچ</button>
+      <button onclick="resetCols('kayfi')">↺ بازگشت</button>
+    </div>
+
+    <h3>📋 ستون‌های کمی</h3>
+    <div class="col-picker" id="cols-kammi"></div>
+    <div class="col-actions">
+      <button onclick="toggleAllCols('kammi', true)">✔ همه</button>
+      <button onclick="toggleAllCols('kammi', false)">✖ هیچ</button>
+      <button onclick="resetCols('kammi')">↺ بازگشت</button>
+    </div>
+
+    <h3>📋 ستون‌های تجمیع</h3>
+    <div class="col-picker" id="cols-merge"></div>
+    <div class="col-actions">
+      <button onclick="toggleAllCols('merge', true)">✔ همه</button>
+      <button onclick="toggleAllCols('merge', false)">✖ هیچ</button>
+      <button onclick="resetCols('merge')">↺ بازگشت</button>
+    </div>
+
+    <h3>📝 هدر (در همه صفحات)</h3>
+    <textarea id="print-header-text" placeholder="شرکت نمونه&#10;گزارش اضافه‌کار"></textarea>
+
+    <h3>📝 فوتر (در همه صفحات)</h3>
+    <textarea id="print-footer-text" placeholder="تنظیم‌کننده: واحد مالی"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn" style="background:#94a3b8;color:#fff;padding:8px 14px" onclick="closeModal('modal-print')">انصراف</button>
+      <button class="btn btn-print2" style="padding:8px 14px" onclick="doPrint()">🖨 چاپ / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD -->
+<div class="modal" id="modal-pass">
+  <div class="modal-box">
+    <h2>🔑 تغییر رمز</h2>
+    <label>رمز فعلی</label><input type="password" id="old-pass">
+    <label>رمز جدید</label><input type="password" id="new-pass">
+    <label>تکرار رمز</label><input type="password" id="new-pass2">
+    <div class="modal-actions">
+      <button class="btn" style="background:#94a3b8;color:#fff;padding:8px 14px" onclick="closeModal('modal-pass')">انصراف</button>
+      <button class="btn btn-add" style="padding:8px 14px" onclick="savePassword()">💾 ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ تعریف ستون‌ها ============
+const COLUMNS = {
+  kayfi: [
+    {key:'row', label:'#'},{key:'type', label:'نوع'},{key:'firstName', label:'نام'},
+    {key:'lastName', label:'نام خانوادگی'},{key:'nationalId', label:'کد ملی'},
+    {key:'position', label:'سمت'},{key:'rate', label:'ماخذ'},
+    {key:'desiredAmount', label:'مبلغ دلخواه'},{key:'rawHours', label:'ساعت خام'},
+    {key:'round', label:'رند'},{key:'finalHours', label:'ساعت نهایی'},
+    {key:'finalAmount', label:'مبلغ نهایی'},{key:'diff', label:'اختلاف'},
+  ],
+  kammi: [
+    {key:'row', label:'#'},{key:'type', label:'نوع'},{key:'firstName', label:'نام'},
+    {key:'lastName', label:'نام خانوادگی'},{key:'nationalId', label:'کد ملی'},
+    {key:'position', label:'سمت'},{key:'rate', label:'ماخذ'},
+    {key:'rawHours', label:'ساعت ورودی'},{key:'round', label:'رند'},
+    {key:'finalHours', label:'ساعت نهایی'},{key:'finalAmount', label:'مبلغ نهایی'},
+    {key:'diff', label:'اختلاف'},
+  ],
+  merge: [
+    {key:'row', label:'#'},{key:'type', label:'نوع'},{key:'firstName', label:'نام'},
+    {key:'lastName', label:'نام خانوادگی'},{key:'nationalId', label:'کد ملی'},
+    {key:'position', label:'سمت'},{key:'rate', label:'ماخذ'},
+    {key:'finalHours', label:'ساعت نهایی'},{key:'finalAmount', label:'مبلغ نهایی'},
+    {key:'round', label:'رند'},
+  ]
+};
+
+const DEFAULT_COLS = {
+  kayfi: ['row','type','firstName','lastName','nationalId','position','rate','desiredAmount','finalHours','finalAmount','diff'],
+  kammi: ['row','type','firstName','lastName','nationalId','position','rate','finalHours','finalAmount','diff'],
+  merge: ['row','type','firstName','lastName','nationalId','position','rate','finalHours','finalAmount','round']
+};
+
+// ============ STATE ============
+const state = {
+  kayfi: JSON.parse(localStorage.getItem('payroll_kayfi') || '[]'),
+  kammi: JSON.parse(localStorage.getItem('payroll_kammi') || '[]'),
+  password: localStorage.getItem('payroll_pass') || '1234',
+  printHeader: localStorage.getItem('payroll_print_header') || '',
+  printFooter: localStorage.getItem('payroll_print_footer') || '',
+  search: {kayfi:'', kammi:'', merge:''},
+  sort: {
+    kayfi: {field:null, dir:null},
+    kammi: {field:null, dir:null},
+    merge: {field:null, dir:null}
+  },
+  printCols: JSON.parse(localStorage.getItem('payroll_print_cols') || 'null') || JSON.parse(JSON.stringify(DEFAULT_COLS)),
+  printOrientation: localStorage.getItem('payroll_print_orient') || 'portrait',
+  skipZero: localStorage.getItem('payroll_skip_zero') === 'true',
+  defType: localStorage.getItem('payroll_def_type') || 'kayfi',
+  currentTab: 'kayfi'
+};
+
+function ensureIds(){
+  let changed = false;
+  [...state.kayfi, ...state.kammi].forEach(r => {
+    if(!r.id){ r.id = 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); changed = true; }
+    if(r.round === undefined) r.round = 'none';
+    if(r.firstName === undefined) r.firstName = '';
+    if(r.lastName === undefined){
+      if(r.name !== undefined){ r.lastName = r.name || ''; delete r.name; }
+      else { r.lastName = ''; }
+      changed = true;
+    }
+  });
+  if(changed) save();
+}
+ensureIds();
+
+function save(){
+  const clean = arr => arr.map(r => ({
+    id: r.id, firstName: r.firstName||'', lastName: r.lastName||'',
+    nationalId: r.nationalId||'', position: r.position||'',
+    rate: r.rate||'', value: r.value||'', round: r.round || 'none'
+  }));
+  localStorage.setItem('payroll_kayfi', JSON.stringify(clean(state.kayfi)));
+  localStorage.setItem('payroll_kammi', JSON.stringify(clean(state.kammi)));
+}
+
+const fmt = n => {
+  if(!isFinite(n)) return '0';
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('fa-IR');
+};
+const num = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
+function fullName(r){ return ((r.firstName||'') + ' ' + (r.lastName||'')).trim(); }
+
+// ============ هسته محاسبات ============
+function computeRow(rec, type){
+  const rate = num(rec.rate);
+  let rawHours, desiredAmount;
+  if(type === 'kayfi'){
+    desiredAmount = num(rec.value);
+    rawHours = rate > 0 ? desiredAmount / rate : 0;
+  } else {
+    rawHours = num(rec.value);
+    desiredAmount = rawHours * rate;
+  }
+  let finalHours = rawHours;
+  const mode = rec.round || 'none';
+  if(mode === 'up') finalHours = Math.ceil(rawHours - 1e-9);
+  else if(mode === 'down') finalHours = Math.floor(rawHours + 1e-9);
+  const finalAmount = finalHours * rate;
+  const diff = finalAmount - desiredAmount;
+  return { rate, rawHours, finalHours, desiredAmount, finalAmount, diff, mode };
+}
+function isEmptyRow(rec, type){
+  const c = computeRow(rec, type);
+  return c.finalAmount === 0 && c.finalHours === 0;
+}
+
+// ============ LOCK ============
+function tryUnlock(){
+  const inp = document.getElementById('lock-pass');
+  const err = document.getElementById('lock-err');
+  if(inp.value === state.password){
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    err.textContent = ''; inp.value = '';
+    initRender();
+  } else {
+    err.textContent = '❌ رمز اشتباه';
+    inp.value = ''; inp.focus();
+  }
+}
+function lockApp(){
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock').style.display = 'flex';
+  document.getElementById('lock-pass').value = '';
+  document.getElementById('lock-pass').focus();
+}
+function openPasswordChange(){
+  ['old-pass','new-pass','new-pass2'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modal-pass').classList.add('show');
+}
+function savePassword(){
+  const oldP = document.getElementById('old-pass').value;
+  const n1 = document.getElementById('new-pass').value;
+  const n2 = document.getElementById('new-pass2').value;
+  if(oldP !== state.password){ toast('❌ رمز فعلی اشتباه'); return; }
+  if(n1.length < 4){ toast('❌ رمز حداقل ۴ کاراکتر'); return; }
+  if(n1 !== n2){ toast('❌ تکرار رمز مطابقت ندارد'); return; }
+  state.password = n1;
+  localStorage.setItem('payroll_pass', n1);
+  closeModal('modal-pass'); toast('✅ رمز تغییر کرد');
+}
+
+// ============ TABS (Sidebar) ============
+function showTab(id){
+  state.currentTab = id;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.nav-item[data-tab="${id}"]`).classList.add('active');
+  const titles = {kayfi:'🟦 لیست کیفی', kammi:'🟩 لیست کمی', merge:'🟨 لیست تجمیع', stats:'🟥 آمار کلی'};
+  document.getElementById('page-title').textContent = titles[id] || '';
+  if(id === 'merge') renderMerge();
+  if(id === 'stats') renderStats();
+}
+function openImport(){ document.getElementById('modal-import').classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+// ============ SORT ============
+function sortBy(type, field){
+  const s = state.sort[type];
+  if(s.field !== field){ s.field = field; s.dir = 'asc'; }
+  else if(s.dir === 'asc') s.dir = 'desc';
+  else if(s.dir === 'desc'){ s.field = null; s.dir = null; }
+  else s.dir = 'asc';
+  updateSortIndicators(type);
+  if(type === 'merge') renderMerge();
+  else renderTable(type);
+}
+function updateSortIndicators(type){
+  const s = state.sort[type];
+  const fields = type === 'merge'
+    ? ['type','firstName','lastName','nationalId','position','rate','finalHours','finalAmount','round']
+    : (type === 'kayfi'
+      ? ['type','firstName','lastName','nationalId','position','rate','desiredAmount','rawHours','round','finalHours','finalAmount','diff']
+      : ['type','firstName','lastName','nationalId','position','rate','rawHours','round','finalHours','finalAmount','diff']);
+  fields.forEach(f => {
+    const el = document.getElementById(`si-${type}-${f}`);
+    if(el) el.textContent = '';
+    const th = document.querySelector(`th[data-sort="${f}"]`);
+    if(th) th.classList.remove('sort-asc','sort-desc');
+  });
+  if(s.field && s.dir){
+    const el = document.getElementById(`si-${type}-${s.field}`);
+    if(el) el.textContent = s.dir === 'asc' ? '▲' : '▼';
+    const th = document.querySelector(`th[data-sort="${s.field}"]`);
+    if(th) th.classList.add(s.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+  }
+}
+function getSortValue(rec, type, field){
+  const c = computeRow(rec, type);
+  switch(field){
+    case 'type': return type === 'kayfi' ? 'کیفی' : 'کمی';
+    case 'firstName': return (rec.firstName || '').trim();
+    case 'lastName': return (rec.lastName || '').trim();
+    case 'nationalId': return (rec.nationalId || '').trim();
+    case 'position': return (rec.position || '').trim();
+    case 'rate': return c.rate;
+    case 'desiredAmount': return c.desiredAmount;
+    case 'rawHours': return c.rawHours;
+    case 'finalHours': return c.finalHours;
+    case 'finalAmount': return c.finalAmount;
+    case 'diff': return c.diff;
+    case 'round': return c.mode === 'up' ? 1 : c.mode === 'down' ? -1 : 0;
+    default: return '';
+  }
+}
+
+// ============ FOCUS ============
+function captureFocus(){
+  const el = document.activeElement;
+  if(!el || !el.dataset || !el.dataset.field) return null;
+  return {field: el.dataset.field, id: el.dataset.id, start: el.selectionStart, end: el.selectionEnd};
+}
+function restoreFocus(info){
+  if(!info) return;
+  const el = document.querySelector(`[data-field="${info.field}"][data-id="${info.id}"]`);
+  if(el){ el.focus(); try{ el.setSelectionRange(info.start, info.end); }catch(e){} }
+}
+
+// ============ SEARCH ============
+function onSearch(type, val){
+  state.search[type] = val.trim().toLowerCase();
+  if(type === 'merge') renderMerge();
+  else renderTable(type);
+}
+function matchesSearch(rec, q, type){
+  if(!q) return true;
+  const c = computeRow(rec, type);
+  const hay = [
+    rec.firstName, rec.lastName, fullName(rec), rec.nationalId, rec.position,
+    rec.rate, rec.value, c.rate, c.rawHours, c.finalHours, c.desiredAmount, c.finalAmount, c.diff,
+    c.mode === 'up' ? 'بالا' : c.mode === 'down' ? 'پایین' : 'بدون'
+  ].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+// ============ ROW OPS ============
+function addRow(type){
+  const rec = {
+    id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    firstName:'', lastName:'', nationalId:'', position:'', rate:'', value:'', round:'none'
+  };
+  state[type].push(rec); save(); renderTable(type);
+  setTimeout(() => {
+    const el = document.querySelector(`[data-field="firstName"][data-id="${rec.id}"]`);
+    if(el) el.focus();
+  }, 50);
+}
+function deleteRow(type, id){
+  const idx = state[type].findIndex(r => r.id === id);
+  if(idx === -1) return;
+  state[type].splice(idx, 1); save(); renderTable(type);
+}
+function updateField(type, id, field, val){
+  const rec = state[type].find(r => r.id === id);
+  if(!rec) return;
+  rec[field] = val; save();
+  updateRowCalc(type, id);
+  updateTotals(type);
+  renderStats();
+  updateNavCounts();
+}
+function changeRound(type, id, mode){
+  const rec = state[type].find(r => r.id === id);
+  if(!rec) return;
+  rec.round = mode; save();
+  renderTable(type);
+}
+function bulkRound(type, mode){
+  if(!state[type].length){ toast('❌ ردیفی نیست'); return; }
+  const label = mode==='up'?'بالا':mode==='down'?'پایین':'حذف';
+  if(!confirm(`رند برای همه ${state[type].length} ردیف اعمال شود؟ (${label})`)) return;
+  state[type].forEach(r => r.round = mode);
+  save(); renderTable(type);
+  toast(`✅ رند ${label} برای همه اعمال شد`);
+}
+function changeType(fromType, id, newType){
+  if(fromType === newType) return;
+  const idx = state[fromType].findIndex(r => r.id === id);
+  if(idx === -1) return;
+  const rec = state[fromType].splice(idx, 1)[0];
+  const rate = num(rec.rate);
+  if(fromType === 'kayfi' && newType === 'kammi'){
+    const amt = num(rec.value);
+    rec.value = rate > 0 ? String(Math.round((amt/rate)*100)/100) : '';
+  } else if(fromType === 'kammi' && newType === 'kayfi'){
+    const hrs = num(rec.value);
+    rec.value = String(Math.round(hrs * rate));
+  }
+  state[newType].push(rec); save();
+  renderTable(fromType); renderTable(newType);
+  updateNavCounts();
+  toast(`✅ به لیست ${newType==='kayfi'?'کیفی':'کمی'} منتقل شد`);
+}
+
+// ============ RENDER TABLE ============
+function renderTable(type){
+  const tbody = document.querySelector(`#tbl-${type} tbody`);
+  const focusInfo = captureFocus();
+  tbody.innerHTML = '';
+  const q = state.search[type];
+  let rows = state[type].filter(r => matchesSearch(r, q, type));
+  const s = state.sort[type];
+  if(s.field && s.dir){
+    rows = [...rows].sort((a, b) => {
+      const va = getSortValue(a, type, s.field);
+      const vb = getSortValue(b, type, s.field);
+      let cmp = 0;
+      if(typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb), 'fa');
+      return s.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+  const all = state[type];
+  const infoEl = document.getElementById(`info-${type}`);
+  if(infoEl) infoEl.textContent = q ? `${rows.length} از ${all.length} ردیف` : `${all.length} ردیف`;
+
+  if(rows.length === 0){
+    const cols = type === 'kayfi' ? 14 : 13;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${
+      q ? 'نتیجه‌ای یافت نشد' : 'هیچ ردیفی نیست — «افزودن ردیف» یا «ایمپورت»'
+    }</td></tr>`;
+  }
+
+  rows.forEach((r) => {
+    const c = computeRow(r, type);
+    const realIdx = all.indexOf(r) + 1;
+    let diffHtml = '';
+    if(Math.abs(c.diff) < 0.5) diffHtml = `<span class="diff zero">۰</span>`;
+    else if(c.diff > 0) diffHtml = `<span class="diff pos">+${fmt(c.diff)}</span>`;
+    else diffHtml = `<span class="diff neg">${fmt(c.diff)}</span>`;
+    const roundClass = c.mode === 'up' ? 'up' : c.mode === 'down' ? 'down' : 'none';
+    const tr = document.createElement('tr');
+    if(type === 'kayfi'){
+      tr.innerHTML = `
+        <td>${realIdx}</td>
+        <td><select class="type-sel ${type}" data-field="type" data-id="${r.id}" onchange="changeType('${type}','${r.id}',this.value)">
+          <option value="kayfi" selected>کیفی</option>
+          <option value="kammi">کمی</option>
+        </select></td>
+        <td><input data-field="firstName" data-id="${r.id}" value="${escAttr(r.firstName)}" placeholder="نام" oninput="updateField('${type}','${r.id}','firstName',this.value)"></td>
+        <td><input data-field="lastName" data-id="${r.id}" value="${escAttr(r.lastName)}" placeholder="نام خانوادگی" oninput="updateField('${type}','${r.id}','lastName',this.value)"></td>
+        <td><input data-field="nationalId" data-id="${r.id}" value="${escAttr(r.nationalId)}" placeholder="۱۰ رقم" maxlength="10" class="num" oninput="updateField('${type}','${r.id}','nationalId',this.value)"></td>
+        <td><input data-field="position" data-id="${r.id}" value="${escAttr(r.position)}" placeholder="سمت" oninput="updateField('${type}','${r.id}','position',this.value)"></td>
+        <td><input data-field="rate" data-id="${r.id}" value="${escAttr(r.rate)}" type="number" placeholder="ماخذ" class="num" oninput="updateField('${type}','${r.id}','rate',this.value)"></td>
+        <td><input data-field="value" data-id="${r.id}" value="${escAttr(r.value)}" type="number" placeholder="مبلغ" class="num" oninput="updateField('${type}','${r.id}','value',this.value)"></td>
+        <td><div class="calc" data-calc-id="${r.id}">${fmt(c.rawHours)}</div></td>
+        <td><select class="round-sel ${roundClass}" data-field="round" data-id="${r.id}" onchange="changeRound('${type}','${r.id}',this.value)">
+          <option value="none" ${c.mode==='none'?'selected':''}>⊘</option>
+          <option value="up" ${c.mode==='up'?'selected':''}>⬆</option>
+          <option value="down" ${c.mode==='down'?'selected':''}>⬇</option>
+        </select></td>
+        <td><div class="calc" data-final-id="${r.id}">${fmt(c.finalHours)}</div></td>
+        <td><div class="calc final" data-finalamt-id="${r.id}">${fmt(c.finalAmount)}</div></td>
+        <td><div data-diff-id="${r.id}">${diffHtml}</div></td>
+        <td><button class="del-row" onclick="deleteRow('${type}','${r.id}')" title="حذف">✕</button></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>${realIdx}</td>
+        <td><select class="type-sel ${type}" data-field="type" data-id="${r.id}" onchange="changeType('${type}','${r.id}',this.value)">
+          <option value="kayfi">کیفی</option>
+          <option value="kammi" selected>کمی</option>
+        </select></td>
+        <td><input data-field="firstName" data-id="${r.id}" value="${escAttr(r.firstName)}" placeholder="نام" oninput="updateField('${type}','${r.id}','firstName',this.value)"></td>
+        <td><input data-field="lastName" data-id="${r.id}" value="${escAttr(r.lastName)}" placeholder="نام خانوادگی" oninput="updateField('${type}','${r.id}','lastName',this.value)"></td>
+        <td><input data-field="nationalId" data-id="${r.id}" value="${escAttr(r.nationalId)}" placeholder="۱۰ رقم" maxlength="10" class="num" oninput="updateField('${type}','${r.id}','nationalId',this.value)"></td>
+        <td><input data-field="position" data-id="${r.id}" value="${escAttr(r.position)}" placeholder="سمت" oninput="updateField('${type}','${r.id}','position',this.value)"></td>
+        <td><input data-field="rate" data-id="${r.id}" value="${escAttr(r.rate)}" type="number" placeholder="ماخذ" class="num" oninput="updateField('${type}','${r.id}','rate',this.value)"></td>
+        <td><input data-field="value" data-id="${r.id}" value="${escAttr(r.value)}" type="number" placeholder="ساعت" class="num" oninput="updateField('${type}','${r.id}','value',this.value)"></td>
+        <td><select class="round-sel ${roundClass}" data-field="round" data-id="${r.id}" onchange="changeRound('${type}','${r.id}',this.value)">
+          <option value="none" ${c.mode==='none'?'selected':''}>⊘</option>
+          <option value="up" ${c.mode==='up'?'selected':''}>⬆</option>
+          <option value="down" ${c.mode==='down'?'selected':''}>⬇</option>
+        </select></td>
+        <td><div class="calc" data-final-id="${r.id}">${fmt(c.finalHours)}</div></td>
+        <td><div class="calc final" data-finalamt-id="${r.id}">${fmt(c.finalAmount)}</div></td>
+        <td><div data-diff-id="${r.id}">${diffHtml}</div></td>
+        <td><button class="del-row" onclick="deleteRow('${type}','${r.id}')" title="حذف">✕</button></td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+
+  updateTotals(type);
+  renderStats();
+  updateNavCounts();
+  restoreFocus(focusInfo);
+}
+
+function updateRowCalc(type, id){
+  const rec = state[type].find(r => r.id === id);
+  if(!rec) return;
+  const c = computeRow(rec, type);
+  const rawCell = document.querySelector(`[data-calc-id="${id}"]`);
+  const finalCell = document.querySelector(`[data-final-id="${id}"]`);
+  const amtCell = document.querySelector(`[data-finalamt-id="${id}"]`);
+  const diffCell = document.querySelector(`[data-diff-id="${id}"]`);
+  if(rawCell) rawCell.textContent = fmt(c.rawHours);
+  if(finalCell) finalCell.textContent = fmt(c.finalHours);
+  if(amtCell) amtCell.textContent = fmt(c.finalAmount);
+  if(diffCell){
+    if(Math.abs(c.diff) < 0.5) diffCell.innerHTML = `<span class="diff zero">۰</span>`;
+    else if(c.diff > 0) diffCell.innerHTML = `<span class="diff pos">+${fmt(c.diff)}</span>`;
+    else diffCell.innerHTML = `<span class="diff neg">${fmt(c.diff)}</span>`;
+  }
+  const sel = document.querySelector(`select[data-field="round"][data-id="${id}"]`);
+  if(sel) sel.className = 'round-sel ' + (c.mode === 'up' ? 'up' : c.mode === 'down' ? 'down' : 'none');
+}
+
+function updateTotals(type){
+  let sumDesired = 0, sumRaw = 0, sumFinalHrs = 0, sumFinalAmt = 0, sumDiff = 0;
+  state[type].forEach(r => {
+    const c = computeRow(r, type);
+    sumDesired += c.desiredAmount;
+    sumRaw += c.rawHours;
+    sumFinalHrs += c.finalHours;
+    sumFinalAmt += c.finalAmount;
+    sumDiff += c.diff;
+  });
+  if(type === 'kayfi'){
+    document.getElementById('sum-kayfi-amount').textContent = fmt(sumDesired);
+    document.getElementById('sum-kayfi-raw').textContent = fmt(sumRaw);
+    document.getElementById('sum-kayfi-final-hrs').textContent = fmt(sumFinalHrs);
+    document.getElementById('sum-kayfi-final-amt').textContent = fmt(sumFinalAmt);
+    document.getElementById('sum-kayfi-diff').textContent = fmt(sumDiff);
+  } else {
+    document.getElementById('sum-kammi-raw').textContent = fmt(sumRaw);
+    document.getElementById('sum-kammi-final-hrs').textContent = fmt(sumFinalHrs);
+    document.getElementById('sum-kammi-final-amt').textContent = fmt(sumFinalAmt);
+    document.getElementById('sum-kammi-diff').textContent = fmt(sumDiff);
+  }
+}
+
+function updateNavCounts(){
+  document.getElementById('nav-count-kayfi').textContent = state.kayfi.length;
+  document.getElementById('nav-count-kammi').textContent = state.kammi.length;
+  document.getElementById('nav-count-merge').textContent = state.kayfi.length + state.kammi.length;
+}
+
+function escAttr(s){
+  return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function clearAll(type){
+  if(!confirm('همه ردیف‌های این بخش پاک شوند؟')) return;
+  state[type] = []; save(); renderTable(type); toast('✅ پاک شد');
+}
+
+// ============ MERGE ============
+function renderMerge(){
+  const tbody = document.querySelector('#tbl-merge tbody');
+  const q = state.search.merge;
+  tbody.innerHTML = '';
+  let sumHrs = 0, sumAmt = 0, shown = 0;
+  const totalAll = state.kayfi.length + state.kammi.length;
+  let all = [];
+  state.kayfi.forEach(r => all.push({rec: r, type: 'kayfi'}));
+  state.kammi.forEach(r => all.push({rec: r, type: 'kammi'}));
+  all = all.filter(item => matchesSearch(item.rec, q, item.type));
+  const s = state.sort.merge;
+  if(s.field && s.dir){
+    all = [...all].sort((a, b) => {
+      const va = getSortValue(a.rec, a.type, s.field);
+      const vb = getSortValue(b.rec, b.type, s.field);
+      let cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'fa');
+      return s.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+  state.kayfi.forEach(r => { const c = computeRow(r, 'kayfi'); sumHrs += c.finalHours; sumAmt += c.finalAmount; });
+  state.kammi.forEach(r => { const c = computeRow(r, 'kammi'); sumHrs += c.finalHours; sumAmt += c.finalAmount; });
+  all.forEach((item, displayIdx) => {
+    const r = item.rec, type = item.type;
+    const c = computeRow(r, type);
+    shown++;
+    const badge = type==='kayfi'?'badge-k':'badge-km';
+    const roundLabel = c.mode==='up'?'<span class="badge badge-up">⬆ بالا</span>':
+                       c.mode==='down'?'<span class="badge badge-down">⬇ پایین</span>':
+                       '<span class="badge badge-none">⊘</span>';
+    tbody.innerHTML += `<tr>
+      <td>${displayIdx+1}</td>
+      <td><span class="badge ${badge}">${type==='kayfi'?'کیفی':'کمی'}</span></td>
+      <td>${escAttr(r.firstName||'-')}</td>
+      <td><b>${escAttr(r.lastName||'-')}</b></td>
+      <td class="num">${r.nationalId||'-'}</td>
+      <td>${escAttr(r.position||'-')}</td><td class="num">${fmt(c.rate)}</td>
+      <td class="num">${fmt(c.finalHours)}</td><td class="num">${fmt(c.finalAmount)}</td>
+      <td>${roundLabel}</td>
+    </tr>`;
+  });
+  if(shown === 0){
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">${q ? 'نتیجه‌ای یافت نشد' : 'هنوز داده‌ای نیست'}</td></tr>`;
+  }
+  const infoEl = document.getElementById('info-merge');
+  if(infoEl) infoEl.textContent = q ? `${shown} از ${totalAll} ردیف` : `${totalAll} ردیف`;
+  document.getElementById('sum-merge-hrs').textContent = fmt(sumHrs);
+  document.getElementById('sum-merge-amt').textContent = fmt(sumAmt);
+}
+
+// ============ STATS ============
+function renderStats(){
+  let kAmt=0, kFinal=0, kHrs=0, kDiff=0, kRateSum=0, kRateCount=0;
+  state.kayfi.forEach(r => {
+    const c = computeRow(r, 'kayfi');
+    kAmt += c.desiredAmount; kFinal += c.finalAmount;
+    kHrs += c.finalHours; kDiff += c.diff;
+    if(c.rate>0){ kRateSum += c.rate; kRateCount++; }
+  });
+  let kmAmt=0, kmHrs=0, kmRateSum=0, kmRateCount=0;
+  state.kammi.forEach(r => {
+    const c = computeRow(r, 'kammi');
+    kmAmt += c.finalAmount; kmHrs += c.finalHours;
+    if(c.rate>0){ kmRateSum += c.rate; kmRateCount++; }
+  });
+  const totalAmt = kFinal + kmAmt, totalHrs = kHrs + kmHrs;
+  document.getElementById('st-k-amt').innerHTML = fmt(kAmt) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-k-final').innerHTML = fmt(kFinal) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-k-hrs').innerHTML = fmt(kHrs) + ' <span class="stat-unit">ساعت</span>';
+  document.getElementById('st-k-diff').innerHTML = fmt(kDiff) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-km-amt').innerHTML = fmt(kmAmt) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-km-hrs').innerHTML = fmt(kmHrs) + ' <span class="stat-unit">ساعت</span>';
+  document.getElementById('st-total-amt').innerHTML = fmt(totalAmt) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-total-hrs').innerHTML = fmt(totalHrs) + ' <span class="stat-unit">ساعت</span>';
+  document.getElementById('st-k-count').textContent = state.kayfi.length;
+  document.getElementById('st-km-count').textContent = state.kammi.length;
+  document.getElementById('st-k-avg').innerHTML = fmt(kRateCount ? kRateSum/kRateCount : 0) + ' <span class="stat-unit">ریال</span>';
+  document.getElementById('st-km-avg').innerHTML = fmt(kmRateCount ? kmRateSum/kmRateCount : 0) + ' <span class="stat-unit">ریال</span>';
+}
+
+// ============ IMPORT ============
+function downloadTemplate(){
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ['نام','نام خانوادگی','کد ملی','سمت','ماخذ','نوع','مبلغ','ساعت','رند'],
+    ['علی','رضایی','0012345678','کارشناس','150000','کیفی','1545000','','بالا'],
+    ['مریم','احمدی','0023456789','مدیر','200000','کیفی','5000000','','پایین'],
+    ['حسن','کریمی','0034567890','کارمند','120000','کمی','','45','بدون'],
+    ['زهرا','موسوی','0045678901','کارشناس','180000','کمی','','30.5','بالا'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:12},{wch:16},{wch:14},{wch:14},{wch:12},{wch:10},{wch:15},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'قالب_ایمپورت');
+  XLSX.writeFile(wb, 'قالب_ایمپورت_اضافه_کار.xlsx');
+  toast('✅ قالب دانلود شد');
+}
+
+function onDefTypeChange(){
+  const val = document.querySelector('input[name="def-type"]:checked').value;
+  ['kayfi','kammi','skip'].forEach(k => {
+    document.getElementById(`defk-${k}-label`).classList.toggle('checked', k === val);
+  });
+}
+
+function doImport(){
+  if(typeof XLSX === 'undefined'){
+    toast('❌ کتابخانه Excel لود نشد — اینترنت یا فایل xlsx.full.min.js را بررسی کنید');
+    return;
+  }
+  const fileInput = document.getElementById('import-file');
+  const file = fileInput.files[0];
+  if(!file){ toast('❌ فایلی انتخاب نشده'); return; }
+
+  const defType = document.querySelector('input[name="def-type"]:checked').value;
+  state.defType = defType;
+  localStorage.setItem('payroll_def_type', defType);
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type: 'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval: ''});
+      if(rows.length === 0){ toast('❌ فایل خالی'); return; }
+
+      const norm = s => String(s||'').trim().toLowerCase()
+        .replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/\s+/g,'');
+      const headerMap = {};
+      Object.keys(rows[0]).forEach(k => {
+        const n = norm(k);
+        if(n === 'نام' || n === 'firstname' || n === 'first name'){ headerMap.firstName = k; }
+        else if(n.includes('نامخانوادگی') || n.includes('نام خانوادگی') || n.includes('lastname') || n.includes('family')){ headerMap.lastName = k; }
+        else if(n.includes('کدملی') || n.includes('کد ملی') || n.includes('nationalcode') || n.includes('nationalid')){ headerMap.nationalId = k; }
+        else if(n.includes('سمت') || n.includes('عنوان') || n.includes('position')){ headerMap.position = k; }
+        else if(n.includes('ماخذ') || n.includes('نرخ') || n.includes('rate')){ headerMap.rate = k; }
+        else if(n === 'نوع' || n.includes('نوع') || n.includes('type')){ headerMap.type = k; }
+        else if(n.includes('مبلغ') || n.includes('amount')){ headerMap.amount = k; }
+        else if(n.includes('ساعت') || n.includes('hours') || n.includes('hour')){ headerMap.hours = k; }
+        else if(n.includes('رند') || n.includes('round')){ headerMap.round = k; }
+      });
+      if(!headerMap.lastName && headerMap.firstName){
+        headerMap.lastName = headerMap.firstName;
+        delete headerMap.firstName;
+      }
+
+      if(document.getElementById('import-clear').checked){
+        state.kayfi = []; state.kammi = [];
+      }
+
+      let cntK = 0, cntKM = 0, skippedNoType = 0, skippedByUser = 0, zeroAmount = 0;
+
+      rows.forEach(row => {
+        const typeVal = String(row[headerMap.type]||'').trim();
+        const isKayfi = typeVal.includes('کیفی');
+        const isKammi = typeVal.includes('کمی');
+        let targetType;
+        if(isKayfi) targetType = 'kayfi';
+        else if(isKammi) targetType = 'kammi';
+        else {
+          if(defType === 'skip'){ skippedByUser++; return; }
+          targetType = defType;
+          skippedNoType++;
+        }
+        let roundMode = 'none';
+        if(headerMap.round){
+          const rv = String(row[headerMap.round]||'').trim().toLowerCase();
+          if(rv.includes('بالا') || rv.includes('up') || rv === '↑') roundMode = 'up';
+          else if(rv.includes('پایین') || rv.includes('down') || rv === '↓') roundMode = 'down';
+        }
+        const rec = {
+          id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+          firstName: headerMap.firstName ? String(row[headerMap.firstName] || '').trim() : '',
+          lastName: String(row[headerMap.lastName] || '').trim(),
+          nationalId: String(row[headerMap.nationalId] || '').trim().replace(/\D/g,''),
+          position: String(row[headerMap.position] || '').trim(),
+          rate: String(num(row[headerMap.rate])),
+          value: targetType === 'kayfi' ? String(num(row[headerMap.amount])) : String(num(row[headerMap.hours])),
+          round: roundMode
+        };
+        if(num(rec.value) === 0) zeroAmount++;
+        if(targetType === 'kayfi'){ state.kayfi.push(rec); cntK++; }
+        else { state.kammi.push(rec); cntKM++; }
+      });
+
+      save();
+      renderTable('kayfi'); renderTable('kammi');
+      closeModal('modal-import'); fileInput.value = '';
+
+      let msg = `✅ ایمپورت شد — کیفی: ${cntK} | کمی: ${cntKM}`;
+      if(skippedNoType > 0) msg += ` | پیش‌فرض: ${skippedNoType}`;
+      if(skippedByUser > 0) msg += ` | رد: ${skippedByUser}`;
+      if(zeroAmount > 0) msg += ` | ⚠ صفر: ${zeroAmount}`;
+      toast(msg);
+    } catch(err){
+      console.error(err); toast('❌ خطا: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ============ EXPORT NORMAL (فقط خواندنی) ============
+function buildSheetData(type){
+  const data = [];
+  const roundLabel = m => m==='up'?'بالا':m==='down'?'پایین':'بدون';
+  if(type === 'kayfi'){
+    data.push(['ردیف','نام','نام خانوادگی','کد ملی','سمت','ماخذ','مبلغ دلخواه','ساعت خام','رند','ساعت نهایی','مبلغ نهایی','اختلاف']);
+    let sDes=0, sRaw=0, sFinH=0, sFinA=0, sDiff=0;
+    state.kayfi.forEach((r, i) => {
+      const c = computeRow(r, 'kayfi');
+      sDes+=c.desiredAmount; sRaw+=c.rawHours; sFinH+=c.finalHours; sFinA+=c.finalAmount; sDiff+=c.diff;
+      data.push([i+1, r.firstName||'', r.lastName||'', r.nationalId||'', r.position||'', c.rate, c.desiredAmount,
+                 Math.round(c.rawHours*100)/100, roundLabel(c.mode), c.finalHours, c.finalAmount, c.diff]);
+    });
+    data.push(['','','','','','جمع کل', sDes, Math.round(sRaw*100)/100, '', sFinH, sFinA, sDiff]);
+  } else if(type === 'kammi'){
+    data.push(['ردیف','نام','نام خانوادگی','کد ملی','سمت','ماخذ','ساعت ورودی','رند','ساعت نهایی','مبلغ نهایی','اختلاف']);
+    let sRaw=0, sFinH=0, sFinA=0, sDiff=0;
+    state.kammi.forEach((r, i) => {
+      const c = computeRow(r, 'kammi');
+      sRaw+=c.rawHours; sFinH+=c.finalHours; sFinA+=c.finalAmount; sDiff+=c.diff;
+      data.push([i+1, r.firstName||'', r.lastName||'', r.nationalId||'', r.position||'', c.rate, c.rawHours,
+                 roundLabel(c.mode), c.finalHours, c.finalAmount, c.diff]);
+    });
+    data.push(['','','','','','جمع کل', Math.round(sRaw*100)/100, '', sFinH, sFinA, sDiff]);
+  } else if(type === 'merge'){
+    data.push(['#','نوع','نام','نام خانوادگی','کد ملی','سمت','ماخذ','ساعت نهایی','مبلغ نهایی','رند']);
+    let idx=0, sH=0, sA=0;
+    const push = (r, tp) => {
+      const c = computeRow(r, tp);
+      sH += c.finalHours; sA += c.finalAmount; idx++;
+      data.push([idx, tp==='kayfi'?'کیفی':'کمی', r.firstName||'', r.lastName||'', r.nationalId||'', r.position||'',
+                 c.rate, c.finalHours, c.finalAmount, roundLabel(c.mode)]);
+    };
+    state.kayfi.forEach(r => push(r, 'kayfi'));
+    state.kammi.forEach(r => push(r, 'kammi'));
+    data.push(['','','','','','جمع کل', '', sH, sA, '']);
+  }
+  return data;
+}
+
+function buildStatsData(){
+  let kAmt=0, kFinal=0, kHrs=0, kDiff=0;
+  state.kayfi.forEach(r => {
+    const c = computeRow(r, 'kayfi');
+    kAmt += c.desiredAmount; kFinal += c.finalAmount; kHrs += c.finalHours; kDiff += c.diff;
+  });
+  let kmAmt=0, kmHrs=0;
+  state.kammi.forEach(r => {
+    const c = computeRow(r, 'kammi');
+    kmAmt += c.finalAmount; kmHrs += c.finalHours;
+  });
+  return [
+    ['عنوان','مقدار'],
+    ['جمع مبلغ دلخواه کیفی (قبل از رند)', kAmt],
+    ['جمع مبلغ نهایی کیفی (پرداختی)', kFinal],
+    ['جمع ساعت نهایی کیفی', kHrs],
+    ['اختلاف رند کیفی', kDiff],
+    ['جمع مبلغ نهایی کمی', kmAmt],
+    ['جمع ساعت نهایی کمی', kmHrs],
+    ['جمع کل مبلغ نهایی (پرداختی)', kFinal + kmAmt],
+    ['جمع کل ساعت نهایی', kHrs + kmHrs],
+    ['تعداد نفرات کیفی', state.kayfi.length],
+    ['تعداد نفرات کمی', state.kammi.length],
+    ['تعداد کل نفرات', state.kayfi.length + state.kammi.length],
+  ];
+}
+
+function exportExcel(type){
+  if(typeof XLSX === 'undefined'){ toast('❌ کتابخانه Excel لود نشد'); return; }
+  const wb = XLSX.utils.book_new();
+  const add = (data, name) => {
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = data[0].map(() => ({wch: 15}));
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  };
+  if(type === 'all'){
+    add(buildSheetData('kayfi'), 'کیفی');
+    add(buildSheetData('kammi'), 'کمی');
+    add(buildSheetData('merge'), 'تجمیع');
+    add(buildStatsData(), 'آمار');
+    XLSX.writeFile(wb, `اضافه_کار_کامل_${new Date().toLocaleDateString('fa-IR').replace(/\//g,'-')}.xlsx`);
+  } else {
+    const names = {kayfi:'کیفی', kammi:'کمی', merge:'تجمیع'};
+    add(buildSheetData(type), names[type]);
+    XLSX.writeFile(wb, `اضافه_کار_${names[type]}.xlsx`);
+  }
+  toast('✅ فایل اکسل دانلود شد');
+}
+
+// ============ EXPORT FOR RE-IMPORT ============
+// خروجی با قالب فایل نمونه ایمپورت — قابل ایمپورت روی کامپیوتر دیگر
+function exportForReimport(){
+  if(typeof XLSX === 'undefined'){ toast('❌ کتابخانه Excel لود نشد'); return; }
+  if(state.kayfi.length === 0 && state.kammi.length === 0){
+    toast('❌ داده‌ای برای خروجی نیست');
+    return;
+  }
+
+  const roundLabel = m => m==='up'?'بالا':m==='down'?'پایین':'بدون';
+  const wb = XLSX.utils.book_new();
+
+  // ساخت ردیف‌ها با قالب ایمپورت
+  const rows = [['نام','نام خانوادگی','کد ملی','سمت','ماخذ','نوع','مبلغ','ساعت','رند']];
+
+  state.kayfi.forEach(r => {
+    rows.push([
+      r.firstName || '',
+      r.lastName || '',
+      r.nationalId || '',
+      r.position || '',
+      num(r.rate),
+      'کیفی',
+      num(r.value),   // مبلغ دلخواه
+      '',             // ساعت خالی (چون کیفی است)
+      roundLabel(r.round)
+    ]);
+  });
+
+  state.kammi.forEach(r => {
+    rows.push([
+      r.firstName || '',
+      r.lastName || '',
+      r.nationalId || '',
+      r.position || '',
+      num(r.rate),
+      'کمی',
+      '',             // مبلغ خالی (چون کمی است)
+      num(r.value),   // ساعت
+      roundLabel(r.round)
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:16},{wch:14},{wch:14},{wch:12},{wch:10},{wch:15},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+  const date = new Date().toLocaleDateString('fa-IR').replace(/\//g,'-');
+  XLSX.writeFile(wb, `اضافه_کار_قابل_ایمپورت_${date}.xlsx`);
+  toast(`✅ خروجی قابل ایمپورت دانلود شد — ${state.kayfi.length + state.kammi.length} ردیف`);
+}
+
+// ============ PRINT ============
+function onOrientChange(){
+  const val = document.querySelector('input[name="orient"]:checked').value;
+  document.getElementById('orient-portrait-label').classList.toggle('checked', val === 'portrait');
+  document.getElementById('orient-landscape-label').classList.toggle('checked', val === 'landscape');
+}
+function saveSkipZero(val){
+  state.skipZero = val;
+  localStorage.setItem('payroll_skip_zero', val ? 'true' : 'false');
+}
+function buildColPicker(type){
+  const container = document.getElementById(`cols-${type}`);
+  container.innerHTML = '';
+  const selected = state.printCols[type] || [];
+  COLUMNS[type].forEach(col => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" ${selected.includes(col.key)?'checked':''} 
+                     onchange="toggleCol('${type}','${col.key}',this.checked)"> ${col.label}`;
+    container.appendChild(lbl);
+  });
+}
+function toggleCol(type, key, checked){
+  if(!state.printCols[type]) state.printCols[type] = [];
+  if(checked && !state.printCols[type].includes(key)) state.printCols[type].push(key);
+  else if(!checked) state.printCols[type] = state.printCols[type].filter(k => k !== key);
+  localStorage.setItem('payroll_print_cols', JSON.stringify(state.printCols));
+}
+function toggleAllCols(type, on){
+  state.printCols[type] = on ? COLUMNS[type].map(c => c.key) : [];
+  localStorage.setItem('payroll_print_cols', JSON.stringify(state.printCols));
+  buildColPicker(type);
+}
+function resetCols(type){
+  state.printCols[type] = [...DEFAULT_COLS[type]];
+  localStorage.setItem('payroll_print_cols', JSON.stringify(state.printCols));
+  buildColPicker(type);
+}
+function openPrint(){
+  document.getElementById('print-header-text').value = state.printHeader;
+  document.getElementById('print-footer-text').value = state.printFooter;
+  const orient = state.printOrientation || 'portrait';
+  document.querySelector(`input[name="orient"][value="${orient}"]`).checked = true;
+  onOrientChange();
+  document.getElementById('pr-skip-zero').checked = !!state.skipZero;
+  buildColPicker('kayfi');
+  buildColPicker('kammi');
+  buildColPicker('merge');
+  document.getElementById('modal-print').classList.add('show');
+}
+function doPrint(){
+  const h = document.getElementById('print-header-text').value;
+  const f = document.getElementById('print-footer-text').value;
+  state.printHeader = h; state.printFooter = f;
+  localStorage.setItem('payroll_print_header', h);
+  localStorage.setItem('payroll_print_footer', f);
+  const orient = document.querySelector('input[name="orient"]:checked').value;
+  state.printOrientation = orient;
+  localStorage.setItem('payroll_print_orient', orient);
+  state.skipZero = document.getElementById('pr-skip-zero').checked;
+  localStorage.setItem('payroll_skip_zero', state.skipZero ? 'true' : 'false');
+  const showK = document.getElementById('pr-kayfi').checked;
+  const showKM = document.getElementById('pr-kammi').checked;
+  const showMerge = document.getElementById('pr-merge').checked;
+  const showStats = document.getElementById('pr-stats').checked;
+  let styleEl = document.getElementById('dynamic-print-style');
+  if(!styleEl){
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamic-print-style';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `@media print { @page { size: A4 ${orient}; margin: 12mm 10mm; } }`;
+  const area = document.getElementById('print-area');
+  let headerHtml = '';
+  if(h.trim()){
+    headerHtml = `<div class="print-header-fixed">
+      ${h.split('\n').map(l => `<h2>${escapeHtml(l)}</h2>`).join('')}
+      <div class="meta">تاریخ: ${new Date().toLocaleDateString('fa-IR')} | ساعت: ${new Date().toLocaleTimeString('fa-IR')}</div>
+    </div>`;
+  }
+  let footerHtml = '';
+  if(f.trim()){
+    footerHtml = `<div class="print-footer-fixed">
+      <div class="content">${escapeHtml(f)}</div>
+    </div>`;
+  }
+  let bodyHtml = '';
+  if(showK && state.kayfi.length){
+    const tbl = buildPrintTable('kayfi');
+    if(tbl) bodyHtml += `<h3>🟦 لیست کیفی</h3>` + tbl;
+  }
+  if(showKM && state.kammi.length){
+    const tbl = buildPrintTable('kammi');
+    if(tbl) bodyHtml += `<h3>🟩 لیست کمی</h3>` + tbl;
+  }
+  if(showMerge && (state.kayfi.length || state.kammi.length)){
+    const tbl = buildMergePrintTable();
+    if(tbl) bodyHtml += `<h3>🟨 لیست تجمیع</h3>` + tbl;
+  }
+  if(showStats){
+    bodyHtml += `<h3>🟥 آمار کلی</h3>` + buildStatsPrintTable();
+  }
+  if(!bodyHtml) bodyHtml = '<p style="text-align:center;color:#999;padding:40px;">داده‌ای برای چاپ وجود ندارد</p>';
+  area.innerHTML = headerHtml + footerHtml + `<div class="print-body">${bodyHtml}</div>`;
+  closeModal('modal-print');
+  setTimeout(() => window.print(), 150);
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function shouldPrintRow(rec, type){
+  if(!state.skipZero) return true;
+  return !isEmptyRow(rec, type);
+}
+function buildPrintTable(type){
+  const cols = state.printCols[type] || [];
+  const colDefs = COLUMNS[type].filter(c => cols.includes(c.key));
+  if(colDefs.length === 0) return '';
+  let rows = [...state[type]];
+  const beforeCount = rows.length;
+  rows = rows.filter(r => shouldPrintRow(r, type));
+  const skipped = beforeCount - rows.length;
+  const s = state.sort[type];
+  if(s.field && s.dir){
+    rows = rows.sort((a, b) => {
+      const va = getSortValue(a, type, s.field);
+      const vb = getSortValue(b, type, s.field);
+      let cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'fa');
+      return s.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+  if(rows.length === 0){
+    if(skipped > 0) return `<p style="text-align:center;color:#999;font-size:10px;padding:10px;">(${skipped} ردیف بدون اضافه‌کار حذف شد)</p>`;
+    return '';
+  }
+  let sDes=0, sRaw=0, sFinH=0, sFinA=0, sDiff=0;
+  const cells = rows.map((r, i) => {
+    const c = computeRow(r, type);
+    sDes+=c.desiredAmount; sRaw+=c.rawHours; sFinH+=c.finalHours; sFinA+=c.finalAmount; sDiff+=c.diff;
+    return {r, c, i};
+  });
+  const headerRow = colDefs.map(col => `<th>${escapeHtml(col.label)}</th>`).join('');
+  const bodyRows = cells.map(({r, c, i}) => {
+    return '<tr>' + colDefs.map(col => {
+      switch(col.key){
+        case 'row': return `<td>${i+1}</td>`;
+        case 'type': return `<td>${type==='kayfi'?'کیفی':'کمی'}</td>`;
+        case 'firstName': return `<td>${escapeHtml(r.firstName||'-')}</td>`;
+        case 'lastName': return `<td><b>${escapeHtml(r.lastName||'-')}</b></td>`;
+        case 'nationalId': return `<td>${r.nationalId||'-'}</td>`;
+        case 'position': return `<td>${escapeHtml(r.position||'-')}</td>`;
+        case 'rate': return `<td>${fmt(c.rate)}</td>`;
+        case 'desiredAmount': return `<td>${fmt(c.desiredAmount)}</td>`;
+        case 'rawHours': return `<td>${fmt(c.rawHours)}</td>`;
+        case 'round': return `<td>${c.mode==='up'?'⬆':c.mode==='down'?'⬇':'⊘'}</td>`;
+        case 'finalHours': return `<td>${fmt(c.finalHours)}</td>`;
+        case 'finalAmount': return `<td>${fmt(c.finalAmount)}</td>`;
+        case 'diff': return `<td>${c.diff>0?'+':''}${fmt(c.diff)}</td>`;
+        default: return '<td></td>';
+      }
+    }).join('') + '</tr>';
+  }).join('');
+  const totalRowCells = colDefs.map(col => {
+    switch(col.key){
+      case 'desiredAmount': return `<td>${fmt(sDes)}</td>`;
+      case 'rawHours': return `<td>${fmt(sRaw)}</td>`;
+      case 'finalHours': return `<td>${fmt(sFinH)}</td>`;
+      case 'finalAmount': return `<td>${fmt(sFinA)}</td>`;
+      case 'diff': return `<td>${fmt(sDiff)}</td>`;
+      default: return '<td></td>';
+    }
+  }).join('');
+  let note = skipped > 0 ? `<p style="font-size:9px;color:#666;margin:2px 0 6px;">⚠ ${skipped} ردیف بدون اضافه‌کار حذف شد</p>` : '';
+  return `<table>
+    <thead><tr>${headerRow}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+    <tfoot><tr class="total-row">${totalRowCells}</tr></tfoot>
+  </table>${note}`;
+}
+function buildMergePrintTable(){
+  const cols = state.printCols.merge || [];
+  const colDefs = COLUMNS.merge.filter(c => cols.includes(c.key));
+  if(colDefs.length === 0) return '';
+  let all = [];
+  state.kayfi.forEach(r => all.push({rec: r, type: 'kayfi'}));
+  state.kammi.forEach(r => all.push({rec: r, type: 'kammi'}));
+  const beforeCount = all.length;
+  all = all.filter(item => shouldPrintRow(item.rec, item.type));
+  const skipped = beforeCount - all.length;
+  const s = state.sort.merge;
+  if(s.field && s.dir){
+    all.sort((a, b) => {
+      const va = getSortValue(a.rec, a.type, s.field);
+      const vb = getSortValue(b.rec, b.type, s.field);
+      let cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'fa');
+      return s.dir === 'asc' ? cmp : -cmp;
+    });
+  }
+  if(all.length === 0){
+    if(skipped > 0) return `<p style="text-align:center;color:#999;font-size:10px;padding:10px;">(${skipped} ردیف بدون اضافه‌کار حذف شد)</p>`;
+    return '';
+  }
+  let sH=0, sA=0;
+  all.forEach(item => {
+    const c = computeRow(item.rec, item.type);
+    sH += c.finalHours; sA += c.finalAmount;
+  });
+  const headerRow = colDefs.map(col => `<th>${escapeHtml(col.label)}</th>`).join('');
+  const bodyRows = all.map((item, i) => {
+    const r = item.rec, tp = item.type;
+    const c = computeRow(r, tp);
+    return '<tr>' + colDefs.map(col => {
+      switch(col.key){
+        case 'row': return `<td>${i+1}</td>`;
+        case 'type': return `<td>${tp==='kayfi'?'کیفی':'کمی'}</td>`;
+        case 'firstName': return `<td>${escapeHtml(r.firstName||'-')}</td>`;
+        case 'lastName': return `<td><b>${escapeHtml(r.lastName||'-')}</b></td>`;
+        case 'nationalId': return `<td>${r.nationalId||'-'}</td>`;
+        case 'position': return `<td>${escapeHtml(r.position||'-')}</td>`;
+        case 'rate': return `<td>${fmt(c.rate)}</td>`;
+        case 'finalHours': return `<td>${fmt(c.finalHours)}</td>`;
+        case 'finalAmount': return `<td>${fmt(c.finalAmount)}</td>`;
+        case 'round': return `<td>${c.mode==='up'?'⬆ بالا':c.mode==='down'?'⬇ پایین':'⊘'}</td>`;
+        default: return '<td></td>';
+      }
+    }).join('') + '</tr>';
+  }).join('');
+  const totalRowCells = colDefs.map(col => {
+    switch(col.key){
+      case 'finalHours': return `<td>${fmt(sH)}</td>`;
+      case 'finalAmount': return `<td>${fmt(sA)}</td>`;
+      default: return '<td></td>';
+    }
+  }).join('');
+  let note = skipped > 0 ? `<p style="font-size:9px;color:#666;margin:2px 0 6px;">⚠ ${skipped} ردیف بدون اضافه‌کار حذف شد</p>` : '';
+  return `<table>
+    <thead><tr>${headerRow}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+    <tfoot><tr class="total-row">${totalRowCells}</tr></tfoot>
+  </table>${note}`;
+}
+function buildStatsPrintTable(){
+  let kAmt=0, kFinal=0, kHrs=0, kDiff=0;
+  state.kayfi.forEach(r => {
+    const c = computeRow(r, 'kayfi');
+    kAmt += c.desiredAmount; kFinal += c.finalAmount; kHrs += c.finalHours; kDiff += c.diff;
+  });
+  let kmAmt=0, kmHrs=0;
+  state.kammi.forEach(r => {
+    const c = computeRow(r, 'kammi');
+    kmAmt += c.finalAmount; kmHrs += c.finalHours;
+  });
+  const rows = [
+    ['جمع مبلغ دلخواه کیفی (قبل از رند)', fmt(kAmt)+' ریال'],
+    ['جمع مبلغ نهایی کیفی (پرداختی)', fmt(kFinal)+' ریال'],
+    ['جمع ساعت نهایی کیفی', fmt(kHrs)+' ساعت'],
+    ['اختلاف رند کیفی', fmt(kDiff)+' ریال'],
+    ['جمع مبلغ نهایی کمی', fmt(kmAmt)+' ریال'],
+    ['جمع ساعت نهایی کمی', fmt(kmHrs)+' ساعت'],
+    ['جمع کل مبلغ نهایی (پرداختی)', fmt(kFinal+kmAmt)+' ریال'],
+    ['جمع کل ساعت نهایی', fmt(kHrs+kmHrs)+' ساعت'],
+    ['تعداد نفرات کیفی', state.kayfi.length],
+    ['تعداد نفرات کمی', state.kammi.length],
+    ['تعداد کل نفرات', state.kayfi.length + state.kammi.length],
+  ];
+  return `<table>
+    <thead><tr><th>عنوان</th><th>مقدار</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ============ TOAST & INIT ============
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+function initRender(){
+  renderTable('kayfi');
+  renderTable('kammi');
+  updateSortIndicators('kayfi');
+  updateSortIndicators('kammi');
+  updateSortIndicators('merge');
+  updateNavCounts();
+}
+document.getElementById('lock-pass').focus();
+</script>
+</body>
+</html>
